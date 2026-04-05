@@ -365,7 +365,7 @@
         
         try {
             // ⚠️ ЗДЕСЬ ЗАМЕНИТЕ URL НА АДРЕС ВАШЕГО БЭКЕНДА ПОСЛЕ ДЕПЛОЯ
-            const response = await fetch('https://ваш-бэкенд.onrender.com/create-payment', {
+const response = await fetch('https://fashion-store-backend-vq9y.onrender.com/create-payment', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ customerName, customerEmail, items, totalAmount })
