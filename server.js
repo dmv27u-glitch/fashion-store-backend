@@ -5,7 +5,16 @@ const cors = require('cors');
 const path = require('path');
 require('dotenv').config();
 
-const app = express();          // 👈 ЭТА СТРОКА ДОЛЖНА БЫТЬ ДО app.use()
+const app = express(); // 👈 ЭТА СТРОКА ДОЛЖНА БЫТЬ ДО app.use()
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type');
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(200);
+  }
+  next();
+});
 app.use(cors());
 app.use(express.json());
 app.use(express.static('public'));
