@@ -2,13 +2,15 @@ const express = require('express');
 const sqlite3 = require('sqlite3').verbose();
 const fetch = require('node-fetch');
 const cors = require('cors');
-app.use(cors());
 const path = require('path');
 require('dotenv').config();
 
-const app = express();
+const app = express();          // 👈 ЭТА СТРОКА ДОЛЖНА БЫТЬ ДО app.use()
 app.use(cors());
 app.use(express.json());
+app.use(express.static('public'));
+
+// ... остальной код (база данных, маршруты, запуск сервера) ...
 // Раздаём статические файлы из папки public (туда положим index.html)
 app.use(express.static('public'));
 
