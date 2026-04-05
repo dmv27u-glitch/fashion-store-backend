@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>Fashion Store | Магазин одежды</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
+        body { background: #f5f5f7; color: #1e1e2a; }
+        .header {
+            background: white; box-shadow: 0 2px 12px rgba(0,0,0,0.05); position: sticky; top: 0; z-index: 100;
+            padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;
+        }
+        .logo { font-size: 1.8rem; font-weight: 700; background: linear-gradient(135deg, #1e1e2a, #4a6fa5); -webkit-background-clip: text; background-clip: text; color: transparent; cursor: pointer; }
+        .admin-area { display: flex; gap: 10px; align-items: center; }
+        .admin-btn, .cart-icon {
+            background: #f0f0f3; border: none; padding: 8px 16px; border-radius: 40px; font-weight: 500;
+            cursor: pointer; display: flex; align-items: center; gap: 8px; transition: 0.2s;
+        }
+        .admin-btn:hover, .cart-icon:hover { background: #e0e0e6; }
+        .cart-count { background: #e74c3c; color: white; border-radius: 30px; padding: 2px 8px; font-size: 0.8rem; font-weight: bold; }
+        .container { max-width: 1300px; margin: 2rem auto; padding: 0 1.5rem; }
+        .section-title { font-size: 2rem; font-weight: 600; margin-bottom: 2rem; border-left: 5px solid #4a6fa5; padding-left: 1rem; }
+        .products-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 2rem; }
+        .product-card {
+            background: white; border-radius: 24px; overflow: hidden; box-shadow: 0 8px 20px rgba(0,0,0,0.05);
+            transition: transform 0.2s, box-shadow 0.2s; cursor: pointer; position: relative;
+        }
+        .product-card:hover { transform: translateY(-5px); box-shadow: 0 15px 30px rgba(0,0,0,0.1); }
+        .product-img { width: 100%; height: 280px; object-fit: cover; background: #f0f0f0; }
+        .product-info { padding: 1.2rem; }
+        .product-title { font-size: 1.2rem; font-weight: 600; margin-bottom: 0.4rem; }
+        .product-price { font-size: 1.3rem; font-weight: 700; color: #2c5f8a; margin: 0.5rem 0; }
+        .add-to-cart-btn {
+            background: #1e1e2a; color: white; border: none; width: 100%; padding: 10px; border-radius: 40px;
+            font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;
+        }
+        .add-to-cart-btn:hover { background: #4a6fa5; }
+        .moder-actions {
+            position: absolute; top: 10px; right: 10px; display: flex; gap: 8px;
+            background: rgba(255,255,255,0.9); padding: 5px 8px; border-radius: 40px; backdrop-filter: blur(4px); z-index: 5;
+        }
+        .moder-actions button { background: white; border: none; border-radius: 30px; width: 32px; height: 32px; cursor: pointer; }
+        .edit-btn { color: #2c5f8a; } .delete-btn { color: #e74c3c; }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); z-index: 1000; justify-content: center; align-items: center; }
+        .modal-content { background: white; width: 90%; max-width: 700px; max-height: 85vh; border-radius: 32px; padding: 1.5rem; overflow-y: auto; animation: fadeInUp 0.2s ease; }
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(20px);} to { opacity: 1; transform: translateY(0);} }
+        .form-group { margin-bottom: 1rem; }
+        .form-group label { display: block; font-weight: 500; margin-bottom: 5px; }
+        input, textarea { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 30px; font-size: 0.9rem; }
+        textarea { border-radius: 20px; resize: vertical; }
+        .image-field-group { display: flex; gap: 10px; margin-bottom: 10px; align-items: center; }
+        .image-field-group input { flex: 1; }
+        .remove-img-btn { background: #ffe1e1; border: none; border-radius: 30px; padding: 0 12px; cursor: pointer; }
+        .btn-primary { background: #4a6fa5; color: white; border: none; padding: 10px 20px; border-radius: 40px; cursor: pointer; }
+        .btn-secondary { background: #ccc; border: none; padding: 8px 16px; border-radius: 40px; cursor: pointer; }
+        .detail-gallery { display: flex; gap: 10px; overflow-x: auto; margin-bottom: 1rem; }
+        .detail-gallery img { width: 80px; height: 80px; object-fit: cover; border-radius: 12px; cursor: pointer; border: 2px solid transparent; }
+        .detail-gallery img.active { border-color: #4a6fa5; }
+        .main-image { width: 100%; max-height: 400px; object-fit: contain; background: #fafafa; border-radius: 24px; margin-bottom: 1rem; }
+        .product-specs { background: #f9f9fb; padding: 1rem; border-radius: 24px; margin: 1rem 0; }
+        .spec-row { display: flex; padding: 8px 0; border-bottom: 1px solid #eee; }
+        .spec-label { width: 130px; font-weight: 600; }
+        .toast { position: fixed; bottom: 30px; right: 30px; background: #1e1e2a; color: white; padding: 12px 24px; border-radius: 40px; z-index: 1100; animation: fadeOut 2s forwards; }
+        @keyframes fadeOut { 0% { opacity: 1; } 70% { opacity: 1; } 100% { opacity: 0; visibility: hidden; } }
+        footer { text-align: center; padding: 2rem; background: white; margin-top: 3rem; }
+        .floating-panel { position: fixed; bottom: 20px; right: 20px; z-index: 200; }
+        .add-product-fab { background: #4a6fa5; color: white; border: none; width: 56px; height: 56px; border-radius: 28px; font-size: 28px; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <div class="logo"><i class="fas fa-tshirt"></i> FASHION STORE</div>
+    <div class="admin-area">
+        <button id="adminModeBtn" class="admin-btn"><i class="fas fa-user-shield"></i> Admin</button>
+        <div class="cart-icon" id="cartIcon">
+            <i class="fas fa-shopping-bag"></i> <span>Корзина</span>
+            <span class="cart-count" id="cartCount">0</span>
+        </div>
+    </div>
+</div>
+
+<div class="container">
+    <h2 class="section-title"><i class="fas fa-fire"></i> Наши модели</h2>
+    <div class="products-grid" id="productsGrid"></div>
+</div>
+
+<!-- Модалки -->
+<div id="cartModal" class="modal"><div class="modal-content"><div style="display:flex;justify-content:space-between;"><span>Корзина</span><button class="close-cart" style="background:none;border:none;font-size:1.8rem;cursor:pointer;">&times;</button></div><div id="cartItemsContainer"></div><div id="cartTotal" style="font-weight:700;text-align:right;margin-top:1rem;"></div><button id="checkoutBtn" style="width:100%;padding:12px;background:#2c5f8a;color:white;border:none;border-radius:40px;margin-top:1rem;">Оформить заказ</button></div></div>
+<div id="detailModal" class="modal"><div class="modal-content" style="max-width:800px;"><div style="display:flex;justify-content:flex-end;"><button id="closeDetailBtn" style="background:none;border:none;font-size:1.8rem;cursor:pointer;">&times;</button></div><div id="detailContent"></div></div></div>
+<div id="productModal" class="modal"><div class="modal-content"><h3 id="productModalTitle">Товар</h3><input type="hidden" id="editId"><div class="form-group"><label>Название *</label><input type="text" id="productName"></div><div class="form-group"><label>Цена (₽) *</label><input type="number" id="productPrice"></div><div class="form-group"><label>Бренд</label><input type="text" id="productBrand"></div><div class="form-group"><label>Материал</label><input type="text" id="productMaterial"></div><div class="form-group"><label>Состав</label><input type="text" id="productComposition"></div><div class="form-group"><label>Страна</label><input type="text" id="productCountry"></div><div class="form-group"><label>Описание</label><textarea id="productDescription" rows="3"></textarea></div><div class="form-group"><label>Изображения (URL)</label><div id="imagesContainer"></div><button type="button" id="addImageFieldBtn" class="btn-secondary" style="margin-top:5px;">+ Добавить картинку</button></div><div style="display:flex;gap:10px;justify-content:flex-end;margin-top:1rem;"><button id="cancelProductBtn" class="btn-secondary">Отмена</button><button id="saveProductBtn" class="btn-primary">Сохранить</button></div></div></div>
+<div id="passwordModal" class="modal"><div class="modal-content"><h3>Вход для модератора</h3><input type="password" id="adminPassword" placeholder="Пароль"><div style="display:flex;gap:10px;justify-content:flex-end;margin-top:1rem;"><button id="cancelPasswordBtn" class="btn-secondary">Отмена</button><button id="submitPasswordBtn" class="btn-primary">Войти</button></div></div></div>
+
+<div class="floating-panel" id="fabAddBtn" style="display:none;"><button class="add-product-fab" id="openAddProductBtn">+</button></div>
+<footer>© 2025 Fashion Store</footer>
+
+<script>
+    // ----- ТОВАРЫ (без picsum, работают везде) -----
+    const defaultProducts = [
+        { id: 1, name: "Бомбер Oversize", price: 5490, brand: "Urban Soul", material: "Нейлон", composition: "100% полиэстер", country: "Китай", description: "Ультрамодный бомбер.", images: ["https://placehold.co/400x500?text=Бомбер"] },
+        { id: 2, name: "Худи с капюшоном", price: 3990, brand: "StreetWear", material: "Футер", composition: "80% хлопок", country: "Турция", description: "Тёплое худи.", images: ["https://placehold.co/400x500?text=Худи"] },
+        { id: 3, name: "Джинсы прямые", price: 4790, brand: "DenimCo", material: "Деним", composition: "98% хлопок", country: "Бангладеш", description: "Классические джинсы.", images: ["https://placehold.co/400x500?text=Джинсы"] },
+        { id: 4, name: "Кроп-топ", price: 1890, brand: "Summer Vibe", material: "Вискоза", composition: "95% вискоза", country: "Россия", description: "Лёгкий топ.", images: ["https://placehold.co/400x500?text=Топ"] },
+        { id: 5, name: "Пальто шерстяное", price: 12990, brand: "Elegance", material: "Шерсть", composition: "70% шерсть", country: "Италия", description: "Элегантное пальто.", images: ["https://placehold.co/400x500?text=Пальто"] },
+        { id: 6, name: "Спортивные штаны", price: 2990, brand: "Active", material: "Трикотаж", composition: "100% хлопок", country: "Пакистан", description: "Удобные штаны.", images: ["https://placehold.co/400x500?text=Штаны"] }
+    ];
+
+    let products = [];
+    let cart = {};
+    let isModerator = false;
+
+    const CART_KEY = "fashion_cart";
+    const PRODUCTS_KEY = "fashion_products_v5";
+
+    function loadProducts() {
+        const stored = localStorage.getItem(PRODUCTS_KEY);
+        if(stored) {
+            products = JSON.parse(stored);
+            products.forEach(p => { if(!p.images) p.images = ["https://placehold.co/400x500?text=Product"]; });
+        } else {
+            products = JSON.parse(JSON.stringify(defaultProducts));
+        }
+    }
+    function saveProducts() {
+        localStorage.setItem(PRODUCTS_KEY, JSON.stringify(products));
+        renderProducts();
+    }
+    function loadCart() {
+        const s = localStorage.getItem(CART_KEY);
+        cart = s ? JSON.parse(s) : {};
+        updateCartUI();
+    }
+    function saveCart() {
+        localStorage.setItem(CART_KEY, JSON.stringify(cart));
+        updateCartUI();
+    }
+
+    let renderLock = false;
+    function renderProducts() {
+        if(renderLock) return;
+        renderLock = true;
+        const grid = document.getElementById('productsGrid');
+        if(!grid) { renderLock=false; return; }
+        const scrollPos = window.scrollY;
+        grid.innerHTML = '';
+        products.forEach(prod => {
+            const card = document.createElement('div');
+            card.className = 'product-card';
+            card.setAttribute('data-id', prod.id);
+            const mainImg = (prod.images && prod.images[0]) ? prod.images[0] : "https://placehold.co/400x500?text=Product";
+            card.innerHTML = `
+                <img class="product-img" src="${mainImg}" alt="${prod.name}" onerror="this.src='https://placehold.co/400x500?text=Error'">
+                <div class="product-info">
+                    <div class="product-title">${escapeHtml(prod.name)}</div>
+                    <div class="product-price">${prod.price.toLocaleString()} ₽</div>
+                    <button class="add-to-cart-btn" data-id="${prod.id}"><i class="fas fa-cart-plus"></i> В корзину</button>
+                </div>
+            `;
+            if(isModerator) {
+                const actions = document.createElement('div');
+                actions.className = 'moder-actions';
+                actions.innerHTML = `<button class="edit-btn" data-id="${prod.id}"><i class="fas fa-pencil-alt"></i></button><button class="delete-btn" data-id="${prod.id}"><i class="fas fa-trash"></i></button>`;
+                card.appendChild(actions);
+            }
+            grid.appendChild(card);
+        });
+        if (window.scrollY !== scrollPos) window.scrollTo(0, scrollPos);
+        renderLock=false;
+    }
+
+    document.getElementById('productsGrid')?.addEventListener('click', (e) => {
+        const btn = e.target.closest('.add-to-cart-btn');
+        if(btn) {
+            e.stopPropagation();
+            const id = parseInt(btn.getAttribute('data-id'));
+            addToCart(id);
+            return;
+        }
+        const editBtn = e.target.closest('.edit-btn');
+        if(editBtn && isModerator) {
+            e.stopPropagation();
+            const id = parseInt(editBtn.getAttribute('data-id'));
+            openEditProduct(id);
+            return;
+        }
+        const delBtn = e.target.closest('.delete-btn');
+        if(delBtn && isModerator) {
+            e.stopPropagation();
+            const id = parseInt(delBtn.getAttribute('data-id'));
+            if(confirm('Удалить товар?')) deleteProduct(id);
+            return;
+        }
+        const card = e.target.closest('.product-card');
+        if(card && !e.target.closest('.add-to-cart-btn') && !e.target.closest('.moder-actions')) {
+            const id = parseInt(card.getAttribute('data-id'));
+            openDetailModal(id);
+        }
+    });
+
+    function addToCart(pid) { cart[pid] = (cart[pid] || 0) + 1; saveCart(); showToast("✅ В корзине"); }
+    function changeQuantity(pid, delta) { let n = (cart[pid] || 0) + delta; if(n<=0) delete cart[pid]; else cart[pid]=n; saveCart(); renderCartModal(); }
+    function removeCartItem(pid) { delete cart[pid]; saveCart(); renderCartModal(); showToast("🗑 Удалено"); }
+    function updateCartUI() { let total = Object.values(cart).reduce((s,q)=>s+q,0); document.getElementById('cartCount').innerText = total; if(document.getElementById('cartModal').style.display === 'flex') renderCartModal(); }
+    function renderCartModal() {
+        let container = document.getElementById('cartItemsContainer'), totalSpan = document.getElementById('cartTotal');
+        let items = Object.entries(cart);
+        if(!items.length) { container.innerHTML = '<div style="text-align:center;padding:2rem;">Корзина пуста</div>'; totalSpan.innerText = "Итого: 0 ₽"; return; }
+        let totalSum = 0, html = '<ul style="list-style:none;">';
+        for(let [idStr, qty] of items) {
+            let pid = parseInt(idStr), prod = products.find(p=>p.id===pid);
+            if(!prod) continue;
+            let sum = prod.price * qty; totalSum += sum;
+            html += `<li style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid #eee;">
+                <div><strong>${escapeHtml(prod.name)}</strong><br>${prod.price.toLocaleString()} ₽</div>
+                <div style="display:flex; gap:8px; align-items:center;">
+                    <button onclick="changeQuantity(${pid}, -1)">-</button><span>${qty}</span>
+                    <button onclick="changeQuantity(${pid}, 1)">+</button>
+                    <button onclick="removeCartItem(${pid})" style="background:#ffe1e1; border:none; border-radius:20px; padding:4px 8px;"><i class="fas fa-trash-alt"></i></button>
+                </div>
+            </li>`;
+        }
+        html += '</ul>'; container.innerHTML = html; totalSpan.innerText = `Итого: ${totalSum.toLocaleString()} ₽`;
+    }
+
+    function openDetailModal(pid) {
+        const prod = products.find(p=>p.id===pid);
+        if(!prod) return;
+        let images = prod.images?.length ? prod.images : ["https://placehold.co/400x500?text=Product"];
+        let galleryHtml = `<div class="detail-gallery">${images.map((img,idx)=>`<img src="${img}" data-img="${img}" class="gallery-thumb ${idx===0?'active':''}" onclick="changeDetailImage('${img}')">`).join('')}</div>`;
+        const content = `
+            <div><img id="detailMainImage" class="main-image" src="${images[0]}"></div>
+            ${galleryHtml}
+            <h2>${escapeHtml(prod.name)}</h2>
+            <div style="font-size:1.8rem;font-weight:700;color:#2c5f8a;">${prod.price.toLocaleString()} ₽</div>
+            <button id="detailAddToCart" data-id="${prod.id}" style="margin:1rem 0;background:#1e1e2a;color:white;border:none;padding:12px;border-radius:40px;width:100%;">Добавить в корзину</button>
+            <div class="product-specs"><div class="spec-row"><div class="spec-label">Бренд:</div><div>${escapeHtml(prod.brand||'—')}</div></div>
+            <div class="spec-row"><div class="spec-label">Материал:</div><div>${escapeHtml(prod.material||'—')}</div></div>
+            <div class="spec-row"><div class="spec-label">Состав:</div><div>${escapeHtml(prod.composition||'—')}</div></div>
+            <div class="spec-row"><div class="spec-label">Страна:</div><div>${escapeHtml(prod.country||'—')}</div></div></div>
+            <div><strong>Описание:</strong><br>${escapeHtml(prod.description||'Нет описания')}</div>
+        `;
+        document.getElementById('detailContent').innerHTML = content;
+        document.getElementById('detailModal').style.display = 'flex';
+        document.getElementById('detailAddToCart')?.addEventListener('click',()=>{ addToCart(prod.id); showToast("Добавлено"); });
+        window.changeDetailImage = (url) => { document.getElementById('detailMainImage').src = url; document.querySelectorAll('.gallery-thumb').forEach(t=>t.classList.remove('active')); event.target.classList.add('active'); };
+    }
+
+    function addProduct(name, price, brand, material, composition, country, description, images) {
+        const newId = products.length ? Math.max(...products.map(p=>p.id)) + 1 : 7;
+        products.push({ id: newId, name, price: Number(price), brand, material, composition, country, description, images: images.filter(i=>i.trim()) });
+        saveProducts();
+        showToast("➕ Добавлено");
+    }
+    function updateProduct(id, name, price, brand, material, composition, country, description, images) {
+        const idx = products.findIndex(p=>p.id===id);
+        if(idx!==-1) { products[idx] = { ...products[idx], name, price:Number(price), brand, material, composition, country, description, images: images.filter(i=>i.trim()) }; saveProducts(); showToast("✏️ Обновлено"); }
+    }
+    function deleteProduct(id) { products = products.filter(p=>p.id!==id); delete cart[id]; saveProducts(); saveCart(); showToast("❌ Удалено"); renderCartModal(); }
+
+    function openAddProduct() {
+        document.getElementById('productModalTitle').innerText = "Добавить товар";
+        document.getElementById('editId').value = '';
+        ['productName','productPrice','productBrand','productMaterial','productComposition','productCountry','productDescription'].forEach(id=>document.getElementById(id).value='');
+        renderImageFields(['']);
+        document.getElementById('productModal').style.display = 'flex';
+    }
+    function openEditProduct(id) {
+        const p = products.find(p=>p.id===id);
+        if(!p) return;
+        document.getElementById('productModalTitle').innerText = "Редактировать товар";
+        document.getElementById('editId').value = id;
+        document.getElementById('productName').value = p.name;
+        document.getElementById('productPrice').value = p.price;
+        document.getElementById('productBrand').value = p.brand||'';
+        document.getElementById('productMaterial').value = p.material||'';
+        document.getElementById('productComposition').value = p.composition||'';
+        document.getElementById('productCountry').value = p.country||'';
+        document.getElementById('productDescription').value = p.description||'';
+        renderImageFields(p.images && p.images.length ? p.images : ['']);
+        document.getElementById('productModal').style.display = 'flex';
+    }
+    function renderImageFields(images=[]) {
+        const container = document.getElementById('imagesContainer');
+        container.innerHTML = '';
+        if(images.length===0) images=[''];
+        images.forEach((img,idx)=>{
+            const div = document.createElement('div'); div.className='image-field-group';
+            div.innerHTML = `<input type="text" class="img-url-input" value="${escapeHtml(img)}" placeholder="URL картинки"><button type="button" class="remove-img-btn"><i class="fas fa-times"></i></button>`;
+            container.appendChild(div);
+        });
+        document.querySelectorAll('.remove-img-btn').forEach(btn=>btn.addEventListener('click',(e)=>{
+            const group = btn.closest('.image-field-group');
+            if(document.querySelectorAll('.image-field-group').length>1) group.remove();
+            else group.querySelector('input').value='';
+        }));
+    }
+    function collectImages() { let urls=[]; document.querySelectorAll('.img-url-input').forEach(inp=>{ if(inp.value.trim()) urls.push(inp.value.trim()); }); return urls; }
+    function saveProductFromModal() {
+        const id = document.getElementById('editId').value;
+        const name = document.getElementById('productName').value.trim();
+        const price = parseFloat(document.getElementById('productPrice').value);
+        if(!name || isNaN(price) || price<=0) { showToast("Название и цена обязательны"); return; }
+        const brand = document.getElementById('productBrand').value.trim();
+        const material = document.getElementById('productMaterial').value.trim();
+        const composition = document.getElementById('productComposition').value.trim();
+        const country = document.getElementById('productCountry').value.trim();
+        const description = document.getElementById('productDescription').value.trim();
+        let images = collectImages();
+        if(images.length===0) images=["https://placehold.co/400x500?text=Product"];
+        if(id) updateProduct(parseInt(id), name, price, brand, material, composition, country, description, images);
+        else addProduct(name, price, brand, material, composition, country, description, images);
+        closeProductModal();
+    }
+    function closeProductModal() { document.getElementById('productModal').style.display = 'none'; }
+
+    function openPasswordModal() { document.getElementById('passwordModal').style.display='flex'; document.getElementById('adminPassword').value=''; }
+    function closePasswordModal() { document.getElementById('passwordModal').style.display='none'; }
+    function tryLogin() {
+        if(document.getElementById('adminPassword').value === 'moder123') {
+            isModerator = true;
+            closePasswordModal();
+            document.getElementById('fabAddBtn').style.display = 'block';
+            renderProducts();
+            showToast("🔓 Режим модератора включён");
+        } else showToast("Неверный пароль");
+    }
+    function logoutModerator() {
+        isModerator = false;
+        document.getElementById('fabAddBtn').style.display = 'none';
+        renderProducts();
+        showToast("🔒 Режим модератора выключен");
+    }
+
+    function showToast(msg) { let t=document.createElement('div'); t.className='toast'; t.innerText=msg; document.body.appendChild(t); setTimeout(()=>t.remove(),2000); }
+
+    // ========== НОВАЯ ФУНКЦИЯ CHECKOUT (С ОТПРАВКОЙ НА БЭКЕНД) ==========
+    async function checkout() {
+        const cartItems = Object.entries(cart);
+        if (cartItems.length === 0) {
+            showToast("Корзина пуста");
+            return;
+        }
+        
+        const customerName = prompt("Введите ваше имя для заказа:");
+        if (!customerName) return;
+        const customerEmail = prompt("Введите ваш email (для уведомлений):");
+        if (!customerEmail) return;
+        
+        const items = [];
+        for (let [idStr, qty] of cartItems) {
+            const product = products.find(p => p.id == idStr);
+            if (product) {
+                items.push({
+                    id: product.id,
+                    name: product.name,
+                    price: product.price,
+                    quantity: qty
+                });
+            }
+        }
+        const totalAmount = items.reduce((sum, i) => sum + i.price * i.quantity, 0);
+        
+        try {
+            // ⚠️ ЗДЕСЬ ЗАМЕНИТЕ URL НА АДРЕС ВАШЕГО БЭКЕНДА ПОСЛЕ ДЕПЛОЯ
+            const response = await fetch('https://ваш-бэкенд.onrender.com/create-payment', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ customerName, customerEmail, items, totalAmount })
+            });
+            const data = await response.json();
+            if (data.success) {
+                if (data.testMode) {
+                    alert("ТЕСТОВЫЙ РЕЖИМ: заказ принят! Деньги не списаны.");
+                    cart = {}; saveCart(); renderCartModal(); 
+                    const modal = document.getElementById('cartModal');
+                    if (modal) modal.style.display = 'none';
+                    showToast("Заказ оформлен, владельцу отправлено уведомление");
+                } else if (data.paymentUrl) {
+                    window.location.href = data.paymentUrl;
+                }
+            } else {
+                alert("Ошибка: " + data.error);
+            }
+        } catch (err) {
+            alert("Не удалось соединиться с сервером. Убедитесь, что бэкенд запущен.");
+        }
+    }
+
+    // Инициализация
+    document.addEventListener('DOMContentLoaded', () => {
+        loadProducts();
+        loadCart();
+        renderProducts();
+        document.getElementById('adminModeBtn').addEventListener('click', () => { if(isModerator) logoutModerator(); else openPasswordModal(); });
+        document.getElementById('cartIcon').addEventListener('click', () => { renderCartModal(); document.getElementById('cartModal').style.display='flex'; });
+        document.querySelector('#cartModal .close-cart').addEventListener('click', () => document.getElementById('cartModal').style.display='none');
+        document.getElementById('checkoutBtn').addEventListener('click', checkout);
+        document.getElementById('openAddProductBtn').addEventListener('click', openAddProduct);
+        document.getElementById('saveProductBtn').addEventListener('click', saveProductFromModal);
+        document.getElementById('cancelProductBtn').addEventListener('click', closeProductModal);
+        document.getElementById('submitPasswordBtn').addEventListener('click', tryLogin);
+        document.getElementById('cancelPasswordBtn').addEventListener('click', closePasswordModal);
+        document.getElementById('closeDetailBtn').addEventListener('click', () => document.getElementById('detailModal').style.display='none');
+        document.getElementById('addImageFieldBtn').addEventListener('click', () => {
+            const cont = document.getElementById('imagesContainer');
+            const div = document.createElement('div'); div.className='image-field-group';
+            div.innerHTML = `<input type="text" class="img-url-input" placeholder="URL картинки"><button type="button" class="remove-img-btn"><i class="fas fa-times"></i></button>`;
+            cont.appendChild(div);
+            div.querySelector('.remove-img-btn').addEventListener('click',()=>{ if(document.querySelectorAll('.image-field-group').length>1) div.remove(); else div.querySelector('input').value=''; });
+        });
+        window.onclick = (e) => {
+            if(e.target === document.getElementById('cartModal')) document.getElementById('cartModal').style.display='none';
+            if(e.target === document.getElementById('productModal')) closeProductModal();
+            if(e.target === document.getElementById('passwordModal')) closePasswordModal();
+            if(e.target === document.getElementById('detailModal')) document.getElementById('detailModal').style.display='none';
+        };
+    });
+    function escapeHtml(str) { if(!str) return ''; return str.replace(/[&<>]/g, m=> m==='&'?'&amp;': m==='<'?'&lt;':'&gt;'); }
+    window.changeQuantity = changeQuantity;
+    window.removeCartItem = removeCartItem;
+</script>
+</body>
+</html>
