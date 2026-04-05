@@ -2,6 +2,7 @@ const express = require('express');
 const sqlite3 = require('sqlite3').verbose();
 const fetch = require('node-fetch');
 const cors = require('cors');
+app.use(cors());
 const path = require('path');
 require('dotenv').config();
 
