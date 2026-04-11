@@ -2,29 +2,24 @@ const express = require('express');
 const sqlite3 = require('sqlite3').verbose();
 const fetch = require('node-fetch');
 const cors = require('cors');
-const path = require('path');
+const nodemailer = require('nodemailer');
 require('dotenv').config();
 
 const app = express();
 
-// Явная настройка CORS (разрешаем все источники для теста)
+// CORS
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   res.header('Access-Control-Allow-Headers', 'Content-Type');
-  if (req.method === 'OPTIONS') {
-    return res.sendStatus(200);
-  }
+  if (req.method === 'OPTIONS') return res.sendStatus(200);
   next();
 });
-
 app.use(express.json());
 app.use(express.static('public'));
 
 // ---------- БАЗА ДАННЫХ ----------
 const db = new sqlite3.Database('./database.sqlite');
-
-// Создаём таблицу orders, если её нет
 db.run(`CREATE TABLE IF NOT EXISTS orders (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   order_id TEXT UNIQUE,
@@ -36,53 +31,70 @@ db.run(`CREATE TABLE IF NOT EXISTS orders (
   status TEXT,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 )`);
-
-// Добавляем колонку customer_address для старых баз (если её нет)
+// Добавляем колонку address, если её нет
 db.run(`ALTER TABLE orders ADD COLUMN customer_address TEXT`, (err) => {
-  if (err && !err.message.includes('duplicate column name')) {
-    console.error('Ошибка при добавлении колонки address:', err.message);
-  }
+  if (err && !err.message.includes('duplicate column name')) console.error(err.message);
 });
 
-// ---------- ОТПРАВКА В TELEGRAM (с подробными логами) ----------
-async function sendTelegramMessage(text) {
-  console.log('=== ОТЛАДКА: функция sendTelegramMessage вызвана ===');
-  const token = process.env.TELEGRAM_BOT_TOKEN;
-  const chatId = process.env.TELEGRAM_CHAT_ID;
-  console.log('TELEGRAM_BOT_TOKEN:', token ? 'УСТАНОВЛЕН' : 'ОТСУТСТВУЕТ');
-  console.log('TELEGRAM_CHAT_ID:', chatId ? 'УСТАНОВЛЕН' : 'ОТСУТСТВУЕТ');
+// ---------- НАСТРОЙКА EMAIL (NODEMAILER) ----------
+let transporter = null;
+if (process.env.EMAIL_HOST && process.env.EMAIL_USER && process.env.EMAIL_PASS) {
+  transporter = nodemailer.createTransport({
+    host: process.env.EMAIL_HOST,
+    port: process.env.EMAIL_PORT || 587,
+    secure: (process.env.EMAIL_PORT == 465), // true для порта 465
+    auth: {
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASS,
+    },
+  });
+  console.log('✅ Email transporter настроен');
+} else {
+  console.log('⚠️ Email не настроен (пропущены переменные окружения EMAIL_HOST, EMAIL_USER, EMAIL_PASS)');
+}
 
-  if (!token || !chatId) {
-    console.log('ОШИБКА: не заданы токен или chatId');
+// Функция отправки письма покупателю
+async function sendEmailNotification(toEmail, orderId, customerName) {
+  if (!transporter) {
+    console.log('Пропуск отправки email: transporter не настроен');
     return;
   }
-
-  const url = `https://api.telegram.org/bot${token}/sendMessage`;
-  console.log('URL запроса (токен скрыт):', url.replace(token, 'HIDDEN'));
-
+  const subject = `Ваш заказ №${orderId} оформлен!`;
+  const text = `Здравствуйте, ${customerName}!\n\nВаш заказ №${orderId} успешно оформлен.\nЕсли у вас возникнут вопросы, пишите в Telegram: @yooittt\n\nСпасибо за покупку!`;
+  const html = `<p>Здравствуйте, ${customerName}!</p>
+                <p>Ваш заказ №${orderId} успешно оформлен.</p>
+                <p>Если у вас возникнут вопросы, пишите в Telegram: <b>@yooittt</b></p>
+                <p>Спасибо за покупку!</p>`;
   try {
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        chat_id: chatId,
-        text: text,
-        parse_mode: 'HTML'
-      })
+    let info = await transporter.sendMail({
+      from: process.env.EMAIL_FROM || process.env.EMAIL_USER,
+      to: toEmail,
+      subject: subject,
+      text: text,
+      html: html,
     });
-    const data = await response.json();
-    console.log('Ответ от Telegram API:', data);
-    if (!response.ok) {
-      console.error('Ошибка Telegram API:', data);
-    } else {
-      console.log('Сообщение успешно отправлено в Telegram');
-    }
+    console.log('✅ Email отправлен:', info.messageId);
   } catch (err) {
-    console.error('Исключение при отправке в Telegram:', err.message);
+    console.error('❌ Ошибка отправки email:', err);
   }
 }
 
-// Формирование красивого сообщения с адресом
+// ---------- TELEGRAM ----------
+async function sendTelegramMessage(text) {
+  const token = process.env.TELEGRAM_BOT_TOKEN;
+  const chatId = process.env.TELEGRAM_CHAT_ID;
+  if (!token || !chatId) return;
+  const url = `https://api.telegram.org/bot${token}/sendMessage`;
+  try {
+    await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'HTML' })
+    });
+    console.log('✅ Уведомление в Telegram отправлено');
+  } catch (err) { console.error('❌ Ошибка Telegram:', err); }
+}
+
 function formatOrderMessage(order) {
   const items = JSON.parse(order.items);
   let itemsText = '';
@@ -94,7 +106,7 @@ function formatOrderMessage(order) {
 
 // ---------- СОЗДАНИЕ ПЛАТЕЖА (ТЕСТОВЫЙ РЕЖИМ + ЮKASSA) ----------
 app.post('/create-payment', async (req, res) => {
-  console.log('Получен запрос на /create-payment от', req.headers.origin);
+  console.log('Получен запрос на /create-payment');
   const { customerName, customerEmail, customerAddress, items, totalAmount } = req.body;
   const orderId = `ORDER_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
 
@@ -102,38 +114,33 @@ app.post('/create-payment', async (req, res) => {
   db.run(
     `INSERT INTO orders (order_id, customer_name, customer_email, customer_address, items, total, status) VALUES (?, ?, ?, ?, ?, ?, ?)`,
     [orderId, customerName, customerEmail, customerAddress, JSON.stringify(items), totalAmount, 'pending'],
-    function(err) {
-      if (err) console.error('Ошибка вставки заказа:', err);
-      else console.log('Заказ сохранён в БД, orderId:', orderId);
-    }
+    (err) => { if (err) console.error('Ошибка вставки заказа:', err); }
   );
 
-  // Если нет ключей ЮKassa — тестовый режим
+  // Если нет ключей ЮKassa — тестовый режим (имитируем оплату)
   if (!process.env.YOOKASSA_SHOP_ID || !process.env.YOOKASSA_SECRET_KEY) {
-    console.log('ТЕСТОВЫЙ РЕЖИМ: заказ создан, через 1 сек отправим уведомление');
+    console.log('ТЕСТОВЫЙ РЕЖИМ: заказ принят');
     setTimeout(async () => {
       db.run(`UPDATE orders SET status = 'paid' WHERE order_id = ?`, [orderId]);
       db.get(`SELECT * FROM orders WHERE order_id = ?`, [orderId], async (err, order) => {
         if (order) {
           await sendTelegramMessage(formatOrderMessage(order));
-        } else {
-          console.error('Не найден заказ для уведомления', orderId);
+          await sendEmailNotification(customerEmail, orderId, customerName);
         }
       });
     }, 1000);
     return res.json({ success: true, paymentUrl: null, testMode: true, orderId });
   }
 
-  // ---------- РЕАЛЬНАЯ ИНТЕГРАЦИЯ С ЮKASSA ----------
+  // ---------- РЕАЛЬНЫЙ ПЛАТЕЖ ЧЕРЕЗ ЮKASSA ----------
   const auth = Buffer.from(`${process.env.YOOKASSA_SHOP_ID}:${process.env.YOOKASSA_SECRET_KEY}`).toString('base64');
   const paymentData = {
     amount: { value: totalAmount.toFixed(2), currency: 'RUB' },
     capture: true,
     confirmation: { type: 'redirect', return_url: 'https://ваш-сайт.netlify.app/thankyou.html' },
     description: `Заказ ${orderId}`,
-    metadata: { orderId }
+    metadata: { orderId, customerEmail, customerName }
   };
-
   try {
     const response = await fetch('https://api.yookassa.ru/v3/payments', {
       method: 'POST',
@@ -157,21 +164,24 @@ app.post('/create-payment', async (req, res) => {
   }
 });
 
-// ---------- WEBHOOK ДЛЯ ЮKASSA (УВЕДОМЛЕНИЕ ОБ УСПЕШНОЙ ОПЛАТЕ) ----------
+// ---------- WEBHOOK ДЛЯ ЮKASSA (ПОСЛЕ ОПЛАТЫ) ----------
 app.post('/yookassa-webhook', async (req, res) => {
   const event = req.body;
   if (event.object && event.object.status === 'succeeded') {
     const orderId = event.object.metadata.orderId;
+    const customerEmail = event.object.metadata.customerEmail;
+    const customerName = event.object.metadata.customerName;
     db.run(`UPDATE orders SET status = 'paid' WHERE order_id = ?`, [orderId]);
     db.get(`SELECT * FROM orders WHERE order_id = ?`, [orderId], async (err, order) => {
       if (order) {
         await sendTelegramMessage(formatOrderMessage(order));
+        if (customerEmail) await sendEmailNotification(customerEmail, orderId, customerName);
       }
     });
   }
   res.send('OK');
 });
 
-// ---------- ЗАПУСК СЕРВЕРА ----------
+// ---------- ЗАПУСК ----------
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Сервер запущен на порту ${PORT}`));
