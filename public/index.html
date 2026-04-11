@@ -336,7 +336,7 @@
 
     function showToast(msg) { let t=document.createElement('div'); t.className='toast'; t.innerText=msg; document.body.appendChild(t); setTimeout(()=>t.remove(),2000); }
 
-    // ========== НОВАЯ ФУНКЦИЯ CHECKOUT (С ОТПРАВКОЙ НА БЭКЕНД) ==========
+    // ========== ОБНОВЛЁННАЯ ФУНКЦИЯ CHECKOUT С АДРЕСОМ ==========
     async function checkout() {
         const cartItems = Object.entries(cart);
         if (cartItems.length === 0) {
@@ -348,6 +348,8 @@
         if (!customerName) return;
         const customerEmail = prompt("Введите ваш email (для уведомлений):");
         if (!customerEmail) return;
+        const customerAddress = prompt("Введите адрес доставки (город, улица, дом, квартира):");
+        if (!customerAddress) return;
         
         const items = [];
         for (let [idStr, qty] of cartItems) {
@@ -364,11 +366,16 @@
         const totalAmount = items.reduce((sum, i) => sum + i.price * i.quantity, 0);
         
         try {
-            // ⚠️ ЗДЕСЬ ЗАМЕНИТЕ URL НА АДРЕС ВАШЕГО БЭКЕНДА ПОСЛЕ ДЕПЛОЯ
-const response = await fetch('https://fashion-store-backend-vq9y.onrender.com/create-payment', {
+            const response = await fetch('https://fashion-store-backend-vq9y.onrender.com/create-payment', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ customerName, customerEmail, items, totalAmount })
+                body: JSON.stringify({ 
+                    customerName, 
+                    customerEmail, 
+                    customerAddress,
+                    items, 
+                    totalAmount 
+                })
             });
             const data = await response.json();
             if (data.success) {
