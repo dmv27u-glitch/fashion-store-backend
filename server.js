@@ -43,15 +43,26 @@ db.run(`CREATE TABLE IF NOT EXISTS orders (
 
 // Отправка сообщения в Telegram
 async function sendTelegramMessage(text) {
-    console.log('=== ОТЛАДКА: функция sendTelegramMessage вызвана ===');
-    const token = process.env.TELEGRAM_BOT_TOKEN;
-    const chatId = process.env.TELEGRAM_CHAT_ID;
-    console.log('Токен:', token ? 'УСТАНОВЛЕН' : 'ОТСУТСТВУЕТ');
-    console.log('Chat ID:', chatId ? 'УСТАНОВЛЕН' : 'ОТСУТСТВУЕТ');
-    if (!token || !chatId) {
-        console.log('ОШИБКА: нет токена или chatId');
-        return;
+console.log('Токен и chatId есть, отправляю запрос к Telegram API');
+const url = `https://api.telegram.org/bot${token}/sendMessage`;
+console.log('URL запроса (токен скрыт):', url.replace(token, 'HIDDEN'));
+
+try {
+    const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'HTML' })
+    });
+    const data = await response.json();
+    console.log('Ответ от Telegram API:', data);
+    if (!response.ok) {
+        console.error('Ошибка Telegram API:', data);
+    } else {
+        console.log('Сообщение успешно отправлено в Telegram');
     }
+} catch (err) {
+    console.error('Исключение при отправке в Telegram:', err.message);
+}
     const url = `https://api.telegram.org/bot${token}/sendMessage`;
     // ... остальной код, который был в функции (fetch и т.д.)
 }
