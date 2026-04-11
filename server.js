@@ -92,8 +92,24 @@ app.post('/create-payment', async (req, res) => {
   const orderId = `ORDER_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
 
   // Сохраняем заказ в БД
-  db.run(`INSERT INTO orders (order_id, customer_name, customer_email, items, total, status) VALUES (?, ?, ?, ?, ?, ?)`,
-    [orderId, customerName, customerEmail, JSON.stringify(items), totalAmount, 'pending']);
+ db.run(`CREATE TABLE IF NOT EXISTS orders (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  order_id TEXT UNIQUE,
+  customer_name TEXT,
+  customer_email TEXT,
+  customer_address TEXT,
+  items TEXT,
+  total INTEGER,
+  status TEXT,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+)`);
+
+// Добавляем колонку address, если её нет (для старых БД)
+db.run(`ALTER TABLE orders ADD COLUMN customer_address TEXT`, (err) => {
+    if (err && !err.message.includes('duplicate column name')) {
+        console.error('Ошибка при добавлении колонки address:', err.message);
+    }
+});
 
   // Если нет ключей ЮKassa — тестовый режим (имитируем оплату)
   if (!YOOKASSA_SHOP_ID || !YOOKASSA_SECRET_KEY) {
