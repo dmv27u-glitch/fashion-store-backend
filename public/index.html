@@ -336,7 +336,7 @@
 
     function showToast(msg) { let t=document.createElement('div'); t.className='toast'; t.innerText=msg; document.body.appendChild(t); setTimeout(()=>t.remove(),2000); }
 
-    // ========== ОБНОВЛЁННАЯ ФУНКЦИЯ CHECKOUT С АДРЕСОМ ==========
+    // ========== ФУНКЦИЯ CHECKOUT С НОМЕРОМ ЗАКАЗА И ПРОСЬБОЙ ПИСАТЬ В TELEGRAM ==========
     async function checkout() {
         const cartItems = Object.entries(cart);
         if (cartItems.length === 0) {
@@ -380,11 +380,12 @@
             const data = await response.json();
             if (data.success) {
                 if (data.testMode) {
-                    alert("ТЕСТОВЫЙ РЕЖИМ: заказ принят! Деньги не списаны.");
+                    // Показываем номер заказа и просьбу написать в Telegram
+                    alert(`✅ Заказ №${data.orderId} оформлен!\n\nСвяжитесь с нами для уточнения деталей в Telegram: @yooittt`);
                     cart = {}; saveCart(); renderCartModal(); 
                     const modal = document.getElementById('cartModal');
                     if (modal) modal.style.display = 'none';
-                    showToast("Заказ оформлен, владельцу отправлено уведомление");
+                    showToast("Заказ отправлен");
                 } else if (data.paymentUrl) {
                     window.location.href = data.paymentUrl;
                 }
