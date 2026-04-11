@@ -69,6 +69,7 @@ function formatOrderMessage(order) {
 // 1. Создание платежа (вызывается из браузера)
 app.post('/create-payment', async (req, res) => {
   const { customerName, customerEmail, items, totalAmount } = req.body;
+  console.log('Получен запрос на /create-payment от', req.headers.origin);
   const orderId = `ORDER_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
 
   // Сохраняем заказ в БД
